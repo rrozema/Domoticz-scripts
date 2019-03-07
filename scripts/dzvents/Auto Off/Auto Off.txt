@@ -32,26 +32,17 @@ return {
 		}
 	},
 
-	-- custom logging level for this script
---	logging = {
---        level = domoticz.LOG_INFO,
---        marker = 'Auto Off'
---    },
-
 	execute = function(domoticz, triggeredItem, info)
 	    local cnt = 0
 
 		domoticz.devices().forEach(
 	        function(device)
 	            cnt = cnt + 1
-                --domoticz.log( 'Device "' .. device.name .. '" is "' .. tostring(device.state) .. '".', domoticz.LOG_INFO)
 	            if device.state ~= 'Off' then
     	            local description = device.description
     	            if description ~= nil and description ~= '' then
-    	                --domoticz.log( 'description = ' .. description .. '.', domoticz.LOG_INFO)
     	                local ok, settings = pcall( domoticz.utils.fromJSON, description)
     	                if ok and settings ~= nil then
---    	                    if settings.auto_off_minutes ~= nil and device.lastUpdate.minutesAgo >= settings.auto_off_minutes then
     	                    if settings.auto_off_minutes ~= nil and device.lastUpdate.minutesAgo >= settings.auto_off_minutes then
 	                            if settings.auto_off_motion_device == nil then
             		                domoticz.log(device.name .. ' is switched off because it has been on for ' .. settings.auto_off_minutes .. ' minutes.', domoticz.LOG_INFO)
