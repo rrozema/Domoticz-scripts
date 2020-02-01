@@ -43,13 +43,13 @@ return {
     	            if description ~= nil and description ~= '' then
     	                local ok, settings = pcall( domoticz.utils.fromJSON, description)
     	                if ok and settings ~= nil then
-    	                    if settings.auto_off_minutes ~= nil and device.lastUpdate.minutesAgo >= tonumber(settings.auto_off_minutes) then
+    	                    if settings.auto_off_minutes ~= nil and device.lastUpdate.minutesAgo > tonumber(settings.auto_off_minutes) then
 	                            if settings.auto_off_motion_device == nil then
             		                domoticz.log(device.name .. ' is switched off because it has been on for ' .. settings.auto_off_minutes .. ' minutes.', domoticz.LOG_INFO)
 	                                device.switchOff()
 	                            elseif type(settings.auto_off_motion_device) == "string" then
 	                                local motion_device = domoticz.devices(settings.auto_off_motion_device)
-                                    if motion_device.state == 'Off' and motion_device.lastUpdate.minutesAgo >= tonumber(settings.auto_off_minutes) then
+                                    if motion_device.state == 'Off' and motion_device.lastUpdate.minutesAgo > tonumber(settings.auto_off_minutes) then
                 		                domoticz.log(device.name .. ' is switched off because no one was in the room for ' .. settings.auto_off_minutes .. ' minutes.', domoticz.LOG_INFO)
     	                                device.switchOff()
                                     end
@@ -57,7 +57,7 @@ return {
                                     local off = true
                                     for i,v in ipairs(settings.auto_off_motion_device) do
                                         local d = domoticz.devices(v)
-                                        if d.state ~= 'Off' or d.lastUpdate.minutesAgo < tonumber(settings.auto_off_minutes) then
+                                        if d.state ~= 'Off' or d.lastUpdate.minutesAgo <= tonumber(settings.auto_off_minutes) then
                                             off = false
                                         end
                                     end
@@ -68,7 +68,7 @@ return {
 	                            end
                             end 
                         else
-                            domoticz.log( 'Device description for '.. device.name ..' is not in json format. Ignoring this device.', domoticz.LOG_ERROR)
+                            domoticz.log( 'Device description for '.. device.name ..' is not in json format. Ignoring this device.', domoticz.LOG_WARNING)
                         end
                     end
                 end
@@ -79,10 +79,10 @@ return {
     
 
         -- Set ventilation back to automatic after 2 hours of manual control.
---        local hs = domoticz.devices('Humidity setting')
---        if hs.state ~= 'On' and hs.lastUpdate.hoursAgo >= 2 then
---            hs.switchOn()
---        end
+        local hs = domoticz.devices('Humidity SetPoint')
+        if hs.state ~= 'On' and hs.lastUpdate.hoursAgo >= 2 then
+            hs.switchOn()
+        end
     
 	end
 }
