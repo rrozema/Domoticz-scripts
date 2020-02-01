@@ -22,6 +22,13 @@
 -- "auto_off_minutes": 5,
 -- "auto_off_motion_device": "Overloop: Motion"
 -- }
+--
+-- Example 3: turn off the device when it has been on for 1 minute and not motion was detected for at least 1 
+-- minute on either one of a set of motion sensors.
+--{
+--"auto_off_minutes": 1,
+--"auto_off_motion_device": ["Overloop 1: Motion 1", "Overloop 1: Motion 2"]
+--}
 
 return {
 	on = {
