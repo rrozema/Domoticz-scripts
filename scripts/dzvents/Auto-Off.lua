@@ -1,5 +1,3 @@
--- Auto-Off (v2) by Richard Rozema
---
 -- This script will run every minute and can automatically send an 'Off' command to turn off any device after
 -- it has been on for some specified time. Each device can be individually configured by putting json coded 
 -- settings into the device's description field. The settings currently supported are:
@@ -27,10 +25,10 @@
 --
 -- Example 3: turn off the device when it has been on for 1 minute and not motion was detected for at least 1 
 -- minute on either one of a set of motion sensors.
--- {
--- "auto_off_minutes": 1,
--- "auto_off_motion_device": ["Overloop 1: Motion 1", "Overloop 1: Motion 2"]
--- }
+--{
+--"auto_off_minutes": 1,
+--"auto_off_motion_device": ["Overloop 1: Motion 1", "Overloop 1: Motion 2"]
+--}
 
 local AUTOOFFVERSION = '2.03'
 
@@ -41,10 +39,6 @@ return {
 			'every minute'
 		}
 	},
-	data = { 
-	    triggers = {initial = {}},      -- Holds a list of (unique) motion devices and a list of devices it triggers.
-	    triggered_by = {initial = {}}   -- Holds a list of (unique) triggered devices and a list of motion devices that trigger it.
-	},
 	logging = {
         level = domoticz.LOG_WARNING,
         marker = 'Generic Auto Off v' .. AUTOOFFVERSION
@@ -52,25 +46,10 @@ return {
 	execute = function(domoticz, triggeredItem, info)
         local cnt = 0
         
-        --domoticz.log( 'Generic Auto Off v' .. AUTOOFFVERSION .. ', Domoticz v' .. domoticz.settings.domoticzVersion .. '.', domoticz.LOG_INFO)
         domoticz.log( 'Generic Auto Off v' .. AUTOOFFVERSION .. ', Domoticz v' .. domoticz.settings.domoticzVersion .. ', Dzvents v' .. domoticz.settings.dzVentsVersion .. '.', domoticz.LOG_INFO)
         
-        --domoticz.dump(domoticz.utils)
-        --domoticz.utils.dumpTable(domoticz)
-        --domoticz.utils.dumpTable(domoticz.utils)
-        --domoticz.utils.dumpTable(domoticz.utils._)
-        
-        --local Time = require('Time')
         local now = domoticz.time
         
---        if domoticz.data.triggers == nil then
-	        domoticz.data.triggers = {}
---	    end
-	   
---	    if domoticz.data.triggered_by == nil then
-            domoticz.data.triggered_by = {}
---	    end
-
         domoticz.devices().forEach(
 	        function(device)
 	            cnt = cnt + 1
@@ -153,8 +132,6 @@ return {
                             -- assume our device has the latest last modified date.
                             local lastUpdate = device.lastUpdate
                             
-                            --domoticz.utils.dumpTable(lastUpdate)
-                            
                             -- We will skip setting a new level if either of the following is true: 
                             -- at least one of the motion devices has state 'On' or the lastUpdate 
                             -- on our device or any of the specified motion devices is less than 
@@ -198,92 +175,13 @@ return {
                                 end
                             end
                         end
-                    
-                        -- Now see if we need to update our triggers lists. I keep a list of trigger devices that I 
-                        -- use to see 1) which devices are our motion devices and 2) which devices need to be 
-                        -- switched on for each motion device. Plus I keep an additional list of triggered devices 
-                        -- so I can determine that a motion device was removed from the settings. Because in this 
-                        -- case I need to remove it from the list of trigger devices too.
-                        --
-
-                        -- Do we need to add entries to the triggers lists?
-                        --      For each of the motion devices in settings
-                        --          If not exists data.triggers[ <settings.motion device> ]
-                        --          Then
-                        --              add a new entry in data.triggers with our current device in the list of devices to trigger.
-                        --          Else
-                        --              If our current device is not in the list of devices to trigger
-                        --              Then
-                        --                  Add our device to the list of devices to trigger.
-                        --
-                        --          If data.triggered_by does not have our device
-                        --          Then
-                        --              add a new entry in data.triggered_by for our current device with our motion device in the triggered_by list.
-                        --          Else
-                        --              If our motion device is not in the list of trigger devices
-                        --              Then
-                        --                  add the motion device to the list of trigger devices
-                        -- 
-                        
-                        for i,v in ipairs(motion_device_names) do
-                            if domoticz.data.triggers[v] == nil then
-                                --domoticz.log('adding trigger ' .. v .. '.', domoticz.LOG_DEBUG)
-                                domoticz.data.triggers[v] = {}
-                            end
-                            -- TODO: This code keeps adding entries, even though following if exists. Why?
-                            if domoticz.data.triggers[v][device.name] == nil then
-                                --domoticz.log('adding triggered device ' .. device.name .. '.', domoticz.LOG_DEBUG)
-                                table.insert(domoticz.data.triggers[v], device.name)
-                            end
-
-                            if domoticz.data.triggered_by[device.name] == nil then
-                                domoticz.data.triggered_by[device.name] = {}
-                            end
-                            if domoticz.data.triggered_by[device.name][v] == nil then
-                                table.insert(domoticz.data.triggered_by[device.name], v)
-                            end
-                        end
                     else
                         domoticz.log( 'Device description for '.. device.name ..' is not in json format. Ignoring this device.', domoticz.LOG_WARNING)
-                    end
-                    
-                    -- Do we need to remove entries from the triggers lists?
-                    --      For each of the entries in the list of trigger devices from data.triggered_by[ <current device> ]
-                    --          If settings does not have a motion device[ <listed motion device> ]
-                    --          Then
-                    --              remove data.triggered_by[<current device>][ <listed motion device> ]
-                    --              If data.triggered_by[<current device>] has no more entries
-                    --              Then 
-                    --                  remove data.triggered_by[<current device>]
-                    --              If exists data.triggers[ <listed motion device> ][ <current device> ]
-                    --              Then
-                    --                  remove data.triggers[ <listed motion device> ][ <current device> ]
-                    --              If data.triggers[ <listed motion device> ] has no more entries
-                    --                  remove data.triggers[ <listed motion device> ]
-                    if domoticz.data.triggered_by[device.name] ~= nil then
-                        for i,v in ipairs(domoticz.data.triggered_by[device.name]) do
-                            if motion_device_names[v] == nil then
-                                domoticz.data.triggered_by[device.name][v] = nil
-                                if #(domoticz.data.triggered_by[device.name]) <= 0 then
-                                    domoticz.data.triggered_by[device.name] = nil
-                                end
-                                if domoticz.data.triggers[v][device.name] ~= nil then
-                                    domoticz.data.triggers[v][device.name] = nil
-                                end
-                                if #(domoticz.data.triggers[v]) <= 0 then
-                                    domoticz.data.triggers[v] = nil
-                                end
-                            end
-                        end
                     end
                 end
             end
         )
     
         domoticz.log('Scanned ' .. tostring(cnt) .. ' devices.', domoticz.LOG_INFO)
-    
-        --domoticz.utils.dumpTable(domoticz.data.triggers)
-        --domoticz.utils.dumpTable(domoticz.data.triggered_by)
-
 	end
 }
