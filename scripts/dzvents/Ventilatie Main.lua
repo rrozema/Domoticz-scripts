@@ -206,22 +206,23 @@ return {
         
             local measured_humidity = domoticz.data.humidityBinnen
             local target_humidity = math.max(domoticz.data.humidityTarget, domoticz.data.humidityBuiten - 20)
-            
-            local switch_device = domoticz.devices( STATUS_SWITCH_NAME )
-            local stat
-            if nil ~= switch_device then
-                --domoticz.utils.dumpTable(switch_device.levelNames)
-                --stat = switch_device.levelNames[domoticz.data.status]
-                -- todo: find the correct name for the level in domoticz.data.status.
-                stat = switch_device.levelName
-            else
-                stat = tostring(domoticz.data.status)
-            end
-            domoticz.log('Status: ' .. stat .. 
-                    ', setpoint: ' .. tostring(domoticz.data.humidityTarget) ..
-                    ', buiten: ' .. tostring(domoticz.data.humidityBuiten) .. 
-                    ', max humidity ' .. tostring(domoticz.data.humidityBinnen) .. 
-                    ', target: '..tostring(target_humidity)..'.', domoticz.LOG_FORCE)
+--            
+--            local switch_device = domoticz.devices( STATUS_SWITCH_NAME )
+--            local stat
+--            if nil ~= switch_device then
+--                --domoticz.utils.dumpTable(switch_device.levelNames)
+--                --stat = switch_device.levelNames[domoticz.data.status]
+--                -- todo: find the correct name for the level in domoticz.data.status.
+--                stat = switch_device.levelName
+--            else
+--                stat = tostring(domoticz.data.status)
+--            end
+--            
+--            domoticz.log('Status: ' .. stat .. 
+--                    ', setpoint: ' .. tostring(domoticz.data.humidityTarget) ..
+--                    ', buiten: ' .. tostring(domoticz.data.humidityBuiten) .. 
+--                    ', max humidity ' .. tostring(domoticz.data.humidityBinnen) .. 
+--                    ', target: '..tostring(target_humidity)..'.', domoticz.LOG_FORCE)
 
 
             local fan_middle
