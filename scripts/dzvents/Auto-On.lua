@@ -64,17 +64,67 @@
 ----- edit below here --------
 
 local SETTINGS = {
-    ["Badkamer: Motion"] =      'Badkamer: Plafond',
-    ["Hal: Motion"] =           'Hal: Plafond',
-    ["Keuken: Motion"] =        'Keuken: Aanrecht',
-    ["Kledingkamer: Motion"] =  'Kledingkamer: Plafond',
-    ["Overloop 1: Motion"] =    {'Washok: Plafond', 'Overloop 1: Plafond'},
-    ["Trap 2: Motion"] =        'Trap 2: Plafond',
-    ["WC: Motion"] =            'WC: Plafond',
-    ["Trap 1: Motion"] =        'Trap 1: Plafond',
-    ["Tuin: Motion"] =          'Tuin: Buitenlamp',
-    ["Badkamer: Plafond"] =     'Badkamer Afzuiging',
-    ["WC: Plafond"] =           'WC Afzuiging'
+    ["Tuin: Motion"] = 'Tuin: Buitenlamp',
+    
+    ["WC: Motion"] = { 'WC: Plafond', 'WC Afzuiging' },
+    
+    ["Badkamer: Motion"] =
+            function ( domoticz, device )
+                local lux_device = domoticz.devices( "Badkamer: Illuminance" )
+                if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
+                    return {'Badkamer: Plafond', 'Badkamer Afzuiging'}
+                else
+                    return 'Badkamer Afzuiging'
+                end
+            end,
+
+    ["Hal: Motion"] =
+            function ( domoticz, device )
+                local lux_device = domoticz.devices( "Hal: Illuminance" )
+                if nil == lux_device or lux_device.lux < 15 or lux_device.timedOut then
+                    return 'Hal: Plafond'
+                end
+            end, 
+
+    ["Keuken: Motion"] =
+            function ( domoticz, device )
+                local lux_device = domoticz.devices( "Keuken: Illuminance" )
+                if nil == lux_device or lux_device.lux < 200 or lux_device.timedOut then
+                    return 'Keuken: Aanrecht'
+                end
+            end, 
+
+    ["Kledingkamer: Motion"] =
+            function ( domoticz, device )
+                local lux_device = domoticz.devices( "Kledingkamer: Illuminance" )
+                if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
+                    return 'Kledingkamer: Plafond'
+                end
+            end,
+
+    ["Overloop 1: Motion"] =
+            function( domoticz, device )
+                local lux_device = domoticz.devices( "Overloop 1: Illuminance" )
+                if nil == lux_device or lux_device.lux < 20 or lux_device.timedOut then
+                    return {'Washok: Plafond', 'Overloop 1: Plafond'}
+                end
+            end,
+
+    ["Trap 2: Motion"] =
+            function ( domoticz, device )
+                local lux_device = domoticz.devices( "Trap 2: Illuminance" )
+                if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
+                    return 'Trap 2: Plafond'
+                end
+            end,
+        
+    ["Trap 1: Motion"] =
+            function ( domoticz, device )
+                local lux_device = domoticz.devices( "Trap 1: Illuminance" )
+                if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
+                    return 'Trap 1: Plafond'
+                end
+            end
 }
 
 ----- edit above here --------
@@ -84,38 +134,39 @@ for k, _ in pairs( SETTINGS ) do
     table.insert( triggerdevices, k )
 end
 
-
 return {
 	on = {
 		devices = triggerdevices
 	},
---	-- custom logging level for this script
---	logging = {
---        level = domoticz.LOG_DEBUG,
---        marker = MOTION_NAME .. ' aan'
---    },
     execute = function(domoticz, device, triggerInfo)
-
         if device.isDevice then
             domoticz.log(device.name..': state '..tostring(device.bState)..'.')
+
             local switches = SETTINGS[device.name]
-            if type(switches) == "string" then  -- If it's a single name, we can simply put a string
-                                                -- in the settings. For ease of processing further 
-                                                -- down I'll make that single string into a table 
-                                                -- with 1 entry here.
-                switches = { switches }
-            end
-            if type(switches) == "table" then
-                if device.bState then
-                    domoticz.devices().filter( switches )
-                        .forEach(
-                            function (switch)
-                                if switch.bState ~= true then
-                                    domoticz.log('switchOn() : ' .. switch.name .. '.')
-                                    switch.switchOn()
+            if nil ~= switches then
+                if type(switches) == "function" then
+                    switches = switches(domoticz, device)
+                end
+                
+                if type(switches) == "string" then    -- If it's a single name, we can simply put a string
+                                                    -- in the settings. For ease of processing further 
+                                                    -- down I'll make that single string into a table 
+                                                    -- with 1 entry here.
+                    switches = { switches }
+                end
+                
+                if type(switches) == "table" then
+                    if device.bState then
+                        domoticz.devices().filter( switches )
+                            .forEach(
+                                function( switch )
+                                    if switch.bState ~= true then
+                                        domoticz.log('switchOn() : ' .. switch.name .. '.')
+                                        switch.switchOn()
+                                    end
                                 end
-                            end
-                        )
+                            )
+                    end
                 end
             else
                 domoticz.log('Unexpected device: ' .. device.name .. ': state ' .. tostring(device.bState) .. '.', domoticz.LOG_ERROR)
