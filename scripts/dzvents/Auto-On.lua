@@ -107,13 +107,15 @@ local SETTINGS = {
                 local lux_device = domoticz.devices( "Overloop 1: Illuminance" )
                 if nil == lux_device or lux_device.lux < 20 or lux_device.timedOut then
                     return {'Washok: Plafond', 'Overloop 1: Plafond'}
+                else
+                    return {'Washok: Plafond'}
                 end
             end,
 
     ["Trap 2: Motion"] =
             function ( domoticz, device )
                 local lux_device = domoticz.devices( "Trap 2: Illuminance" )
-                if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
+                if nil == lux_device or lux_device.lux < 30 or lux_device.timedOut then
                     return 'Trap 2: Plafond'
                 end
             end,
