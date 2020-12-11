@@ -61,19 +61,39 @@
 -- string values. A comma must be put after each but the last set of 
 -- master = slave or master = { slave, slave} combinations.
 
+-- New feature: Initial dimmer level. Auto-On can set the level of a 
+-- dimmer device to a specific level whenever it activates a device.
+-- The device and when to activate it is exactly like it was before;
+-- to make sure a device is always started at some specific level,
+-- include in the device's description field json text specifing the
+-- attribute "auto_on_level" followed a level from 1 to 100 to set 
+-- the dimmer to when the device is activated by auto-on. For example:
+-- {
+--  "auto_on_level": "50"
+-- }
+-- this will set the dimmer to 50% whenever it gets activated by 
+-- auto-on.
+
 ----- edit below here --------
 
 local SETTINGS = {
-    ["Tuin: Motion"] = 'Tuin: Buitenlamp',
-    
+    ["Tuin: Motion"] = --'Tuin: Buitenlamp',
+            function ( domoticz, device )
+                local switch_device = domoticz.devices( "Time for Avond" )
+                if nil == switch_device or switch_device.bState or switch_device.timedOut then
+                    return 'Tuin: Buitenlamp'
+                end
+            end, 
+        
     ["WC: Motion"] = { 'WC: Plafond', 'WC Afzuiging' },
     
     ["Badkamer: Motion"] =
             function ( domoticz, device )
+                --delayedOn(domoticz, device, 'Badkamer Afzuiging', 30)
                 local lux_device = domoticz.devices( "Badkamer: Illuminance" )
                 if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
                     return {'Badkamer: Plafond', 'Badkamer Afzuiging'}
-                else
+                else 
                     return 'Badkamer Afzuiging'
                 end
             end,
@@ -89,8 +109,10 @@ local SETTINGS = {
     ["Keuken: Motion"] =
             function ( domoticz, device )
                 local lux_device = domoticz.devices( "Keuken: Illuminance" )
-                if nil == lux_device or lux_device.lux < 200 or lux_device.timedOut then
-                    return 'Keuken: Aanrecht'
+                if nil == lux_device or lux_device.lux < 150 or lux_device.timedOut then
+                    return {'Keuken: Spots', 'Keuken: kastverlichting'}
+                else
+                    return {'Keuken: kastverlichting'}
                 end
             end, 
 
@@ -106,7 +128,7 @@ local SETTINGS = {
             function( domoticz, device )
                 local lux_device = domoticz.devices( "Overloop 1: Illuminance" )
                 if nil == lux_device or lux_device.lux < 20 or lux_device.timedOut then
-                    return {'Washok: Plafond', 'Overloop 1: Plafond'}
+                    return {'Overloop 1: Plafond', 'Washok: Plafond'}
                 else
                     return {'Washok: Plafond'}
                 end
@@ -136,14 +158,77 @@ for k, _ in pairs( SETTINGS ) do
     table.insert( triggerdevices, k )
 end
 
+local function delayedOn(domoticz, triggerDevice, toSwitch, seconds)
+    if nil ~= domoticz and nil ~= triggerDevice and nil ~= toSwitch then
+        -- ... and there is a delay > 0 seconds defined for this device...
+        if seconds ~= nil and seconds > 0 then
+            local Time = require('Time')
+            local thisUpdate = Time(os.date("%Y-%m-%d %H:%M:%S", os.time(triggerDevice.lastUpdate.current)))
+    
+            local name = '__Auto_On-' .. tostring(triggerDevice.idx) .. '-' .. thisUpdate.raw
+            local extraData = { ["idx"] = triggerDevice.idx, ["bState"] = triggerDevice.bState,  ["thisUpdate"] = thisUpdate, ["toSwitch"] = toSwitch }
+    
+            -- ... emit a customEvent after the delay.
+            domoticz.emitEvent(name,  extraData).afterSec(seconds)
+        else
+            -- No delay, activate the action right now.
+            domoticz.log( 'Triggering switch(es) without delay', domotiz.LOG_INFO)
+            switchOn(domoticz, toSwitch)
+        end
+    end
+end
+
+local function switchOn( domoticz, switches )
+    if nil ~= domoticz and nil ~= switches then
+        if type(switches) == "string" then  -- If it's a single name, we can simply put a string
+                                            -- in the settings. For ease of processing further 
+                                            -- down I'll make that single string into a table 
+                                            -- with 1 entry here.
+            switches = { switches }
+        end
+        if type(switches) == "table" then
+            if device.bState then
+                domoticz.devices().filter( switches )
+                    .forEach(
+                        function( switch )
+                            local level = nil
+                            domoticz.log('Checking ' .. switch.name .. '.')
+                            
+                            local description = switch.description
+                            if nil ~= description and description ~= '' then
+                                domoticz.log('Found non-empty description for ' .. switch.name .. '.')
+                                local ok, settings = pcall( domoticz.utils.fromJSON, description)
+                                if ok and nil ~= settings then
+                                    domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+                                    level = tonumber(settings.auto_on_level);
+                                end
+                            end
+                        
+                            if nil ~= level and switch.level < tonumber(level) then
+                                domoticz.log('setLevel(' .. tostring(level) .. ') : ' .. switch.name .. '.')
+                                switch.setLevel(tonumber(level))
+                            elseif switch.bState ~= true then
+                                domoticz.log('switchOn() : ' .. switch.name .. '.')
+                                switch.switchOn()
+                            end
+                        end
+                    )
+            end
+        end
+    end
+end
+
+
 return {
 	on = {
-		devices = triggerdevices
+		devices = triggerdevices,
+        customEvents = {"__Auto_On-*"}
 	},
-    execute = function(domoticz, device, triggerInfo)
-        if device.isDevice then
+    execute = function(domoticz, trigger, triggerInfo)
+        if trigger.isDevice then
+            local device = trigger
             domoticz.log(device.name..': state '..tostring(device.bState)..'.')
-
+            
             local switches = SETTINGS[device.name]
             if nil ~= switches then
                 if type(switches) == "function" then
@@ -162,10 +247,32 @@ return {
                         domoticz.devices().filter( switches )
                             .forEach(
                                 function( switch )
-                                    if switch.bState ~= true then
+                                    local level = nil
+                                    domoticz.log('Checking ' .. switch.name .. '.')
+                            
+                                    local description = switch.description
+                                    if nil ~= description and description ~= '' then
+                                        domoticz.log('Found non-empty description for ' .. switch.name .. '.')
+                                        local ok, settings = pcall( domoticz.utils.fromJSON, description)
+                                        if ok and nil ~= settings then
+                                            level = settings.auto_on_level;
+                                            domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+                                        end
+                                    end
+                                
+                                    if nil ~= level and switch.level < tonumber(level) then
+                                        domoticz.log('setLevel(' .. tostring(level) .. ') : ' .. switch.name .. '.')
+                                        switch.setLevel(tonumber(level))
+                                    elseif true ~= switch.bState then
                                         domoticz.log('switchOn() : ' .. switch.name .. '.')
                                         switch.switchOn()
-                                    end
+                                    end                                    
+                                    
+                                    
+--                                    if switch.bState ~= true then
+--                                        domoticz.log('switchOn() : ' .. switch.name .. '.')
+--                                        switch.switchOn()
+--                                    end
                                 end
                             )
                     end
@@ -174,9 +281,40 @@ return {
                 domoticz.log('Unexpected device: ' .. device.name .. ': state ' .. tostring(device.bState) .. '.', domoticz.LOG_ERROR)
                 domoticz.utils.dumpTable(device)
             end
-        else
-            domoticz.log('Trigger is not a device: ' .. device.name .. '.', domoticz.LOG_ERROR)
-            domoticz.utils.dumpTable(device)
+        elseif item.isCustomEvent then
+            local event = trigger
+            -- If we get here, the customEvent has been triggered after the delay period. We will 
+            -- test that:
+            -- 1 : bState on the device equals that which we stored in the [extra data], and
+            -- 2 : lastUpdate on the device equals that which we stored in [extra data].
+            -- If both conditions are met we know the device is still unchanged after the delay
+            -- and we can then start the delayed action.
+
+            if event.json == nil then
+                domoticz.log( 'json is missing', domoticz.LOG_ERROR)
+            elseif event.json.idx == nil then
+                domoticz.log( 'idx is missing', domoticz.LOG_ERROR)
+            elseif event.json.bState == nil then
+                domoticz.log( 'bstate is missing', domoticz.LOG_ERROR)
+            elseif event.json.thisUpdate == nil then  
+                domoticz.log( 'thisUpdate is missing', domoticz.LOG_ERROR)
+            else
+                local device = domoticz.devices(event.json.idx)
+                if device == nil then
+                    domoticz.log( 'device('..tostring(event.json.idx)..') not found', domoticz.LOG_ERROR)
+                else
+                    local Time = require('Time')
+                    local thisUpdate = Time(os.date("%Y-%m-%d %H:%M:%S", os.time(event.json.thisUpdate)))
+                    
+                    if device.bState == event.json.bState and device.lastUpdate.compare(thisUpdate).compare == 0 then
+                        domoticz.log( 'Triggering switch(es) after delay', domoticz.LOG_FORCE)
+                        switchOn( domoticz, event.json.toSwitch)
+                    end 
+                end
+            end
+        else  
+            domoticz.log('Trigger is not a device nor a custom event:', domoticz.LOG_ERROR)
+            domoticz.utils.dumpTable(trigger)
     	end
 	end
 }
