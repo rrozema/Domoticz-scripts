@@ -30,7 +30,10 @@
 --"auto_off_motion_device": ["Overloop 1: Motion 1", "Overloop 1: Motion 2"]
 --}
 
-local AUTOOFFVERSION = '2.03'
+-- Version history:
+-- 2.04 - by EddyG : use pattern matching to see if description looks like json, and ignore anyhting that's not inside curly braces.
+
+local AUTOOFFVERSION = '2.04'
 
 return {
 	on = {
@@ -59,7 +62,7 @@ return {
                                            -- trigger lists. So we start with an empty list.
 
                 motion_device_names = {}
-                description = device.description
+                description = string.match(device.description, '^[^{]*({.*})[^}]*$')
 
                 if description ~= nil and description ~= '' then
                     local ok, settings = pcall( domoticz.utils.fromJSON, description)
@@ -82,8 +85,21 @@ return {
                         -- If auto_off_minutes was specified and the device is not off, I 
                         -- will use this to initialise the dimlevel variable with a level 
                         -- of 0. If the device is off already, we don't need to change it.
-                        if settings.auto_off_minutes ~= nil and device.bState then
-                            dimlevel = { level = 0, minutes = settings.auto_off_minutes}
+                        if device.active then
+                            if settings.auto_off_minutes ~= nil then
+                                if type(settings.auto_off_group_inactive) == "string" then
+                                    local group = domoticz.groups(settings.auto_off_group_inactive)
+                                    if nil ~= group then
+                                        if group.active == false then
+                                            dimlevel = { level = 0, minutes = tonumber(settings.auto_off_minutes)}
+                                        end
+                                    else
+                                        domoticz.log('Group ' .. tostring(settings.auto_off_group_inactive) .. ' not found.', domoticz.LOG_ERROR )
+                                    end
+                                else
+                                    dimlevel = { level = 0, minutes = tonumber(settings.auto_off_minutes)}
+                                end
+                            end
                         end
                         
                         -- If one or more dimlevels were specified, the user must think our
@@ -148,7 +164,7 @@ return {
                                             if acc ~= nil then      -- If a previous sensor was 'On', we will have set 
                                                                     -- lastUpdate to nil and we don't want to overwrite
                                                                     -- this.
-                                                if md.bState then
+                                                if md.active then
                                                     --domoticz.utils._.print( 'Sensor ' .. md.name .. ' is on')
                                                     domoticz.log( 'Motion device ' .. md.name .. ' is On.', domoticz.LOG_DEBUG)
 
