@@ -119,7 +119,7 @@ local SETTINGS = {
     ["Kledingkamer: Motion"] =
             function ( domoticz, device )
                 local lux_device = domoticz.devices( "Kledingkamer: Illuminance" )
-                if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
+                if nil == lux_device or lux_device.lux < 10 or lux_device.timedOut then
                     return 'Kledingkamer: Plafond'
                 end
             end,
@@ -127,8 +127,9 @@ local SETTINGS = {
     ["Overloop 1: Motion"] =
             function( domoticz, device )
                 local lux_device = domoticz.devices( "Overloop 1: Illuminance" )
-                if nil == lux_device or lux_device.lux < 20 or lux_device.timedOut then
+                if nil == lux_device or lux_device.lux < 10 or lux_device.timedOut then
                     return {'Overloop 1: Plafond', 'Washok: Plafond'}
+--                    return {'Overloop 1: Plafond'}
                 else
                     return {'Washok: Plafond'}
                 end
@@ -148,10 +149,20 @@ local SETTINGS = {
                 if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
                     return 'Trap 1: Plafond'
                 end
-            end
+            end,
+
+    ["Woonkamer: Motion 2"] =
+            function ( domoticz, device )
+                return {"Woonkamer: Scherm Links", "Woonkamer: Scherm Rechts", "Woonkamer: Speakers"}
+            end,         
 }
 
 ----- edit above here --------
+
+-- Version history:
+-- 2021-09-10
+--  - Added regular expression to filter out descriptions that can't be json. Thanks EddyG!
+--  - Fixed some inconsistent coding when retrieving the auto_on_level setting.
 
 local triggerdevices = {}
 for k, _ in pairs( SETTINGS ) do
@@ -194,13 +205,14 @@ local function switchOn( domoticz, switches )
                             local level = nil
                             domoticz.log('Checking ' .. switch.name .. '.')
                             
-                            local description = switch.description
+                            local description = string.match(switch.description, '^[^{]*({.*})[^}]*$')
                             if nil ~= description and description ~= '' then
-                                domoticz.log('Found non-empty description for ' .. switch.name .. '.')
                                 local ok, settings = pcall( domoticz.utils.fromJSON, description)
                                 if ok and nil ~= settings then
-                                    domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
-                                    level = tonumber(settings.auto_on_level);
+                                    if nil ~= settings.auto_on_level then
+                                        level = settings.auto_on_level;
+                                        domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+                                    end
                                 end
                             end
                         
@@ -220,10 +232,10 @@ end
 
 
 return {
-	on = {
-		devices = triggerdevices,
+    on = {
+        devices = triggerdevices,
         customEvents = {"__Auto_On-*"}
-	},
+    },
     execute = function(domoticz, trigger, triggerInfo)
         if trigger.isDevice then
             local device = trigger
@@ -235,7 +247,7 @@ return {
                     switches = switches(domoticz, device)
                 end
                 
-                if type(switches) == "string" then    -- If it's a single name, we can simply put a string
+                if type(switches) == "string" then  -- If it's a single name, we can simply put a string
                                                     -- in the settings. For ease of processing further 
                                                     -- down I'll make that single string into a table 
                                                     -- with 1 entry here.
@@ -250,13 +262,14 @@ return {
                                     local level = nil
                                     domoticz.log('Checking ' .. switch.name .. '.')
                             
-                                    local description = switch.description
+                                    local description = string.match(switch.description, '^[^{]*({.*})[^}]*$')
                                     if nil ~= description and description ~= '' then
-                                        domoticz.log('Found non-empty description for ' .. switch.name .. '.')
                                         local ok, settings = pcall( domoticz.utils.fromJSON, description)
                                         if ok and nil ~= settings then
-                                            level = settings.auto_on_level;
-                                            domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+                                            if nil ~= settings.auto_on_level then
+                                                level = settings.auto_on_level;
+                                                domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+                                            end
                                         end
                                     end
                                 
@@ -315,6 +328,6 @@ return {
         else  
             domoticz.log('Trigger is not a device nor a custom event:', domoticz.LOG_ERROR)
             domoticz.utils.dumpTable(trigger)
-    	end
-	end
+        end
+    end
 }
