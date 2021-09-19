@@ -25,14 +25,15 @@ https://apps.hvcgroep.nl/rest/adressen/bagId/afvalstromen <<replace bagId
 local ZIPCODE = "2622LH"        -- postcode, no space between 4 digits and 2 letters!
 local NUMBER = "87"             -- huisnummer
 
---local ZIPCODE = "5654LN"
---local NUMBER = "11"
+--local ZIPCODE = "5624NM"
+--local NUMBER = "17"
 
 --local ZIPCODE = "3121AR"
 --local NUMBER = "15"
 
 local TEXT_DEVICE_NAME = "Garbage"
 local ALERT_DEVICE_NAME = "GarbageAlert"
+local DONE_BUTTON_DEVICE_NAME = "Zet container buiten"
 
 --++++---------------------------- Set your values and device names above this Line -----------------------------------------
 
@@ -45,7 +46,7 @@ local provider_list = {
         ["HVC"] = "https://apps.hvcgroep.nl",
         ["Dar"] = "https://afvalkalender.dar.nl",
         ["Afvalvrij"] = "https://afvalkalender.circulus-berkel.nl",
-        ["Meerlanden"] = "https://afvalkalender.meerlanden.nl",
+        --["Meerlanden"] = "https://afvalkalender.meerlanden.nl",
         ["Cure"] = "https://afvalkalender.cure-afvalbeheer.nl", 
         ["Avalex"] = "https://www.avalex.nl",
         ["RMN"] = "https://inzamelschema.rmn.nl",
@@ -56,7 +57,7 @@ local provider_list = {
         ["Waalre"] = "http://afvalkalender.waalre.nl",
         ["ZRD"] = "https://afvalkalender.zrd.nl",
         ["Spaarnelanden"] = "https://afvalwijzer.spaarnelanden.nl",
-        --["Montfoort"] = "https://afvalkalender.montfoort.nl",     -- url no longer available?
+        ["Montfoort"] = "https://afvalkalender.montfoort.nl",     -- url no longer available?
         ["GAD"] = "https://inzamelkalender.gad.nl",
         ["Cranendonck"] = "https://afvalkalender.cranendonck.nl"
         --["irado"] = "https://www.irado.nl/bewoners/afvalkalender"
@@ -66,8 +67,8 @@ return {
     on = {
         timer = {
           "at 00:01",
-          "at 05:00"
-          --'every 1 minutes'
+          "at 07:21"
+          --'every 5 minutes'
         },
         httpResponses = { 
             GETDATES,  -- Trigger reading garbage collection schema
@@ -77,7 +78,7 @@ return {
     },
 
 --    logging = {
---        level = domoticz.LOG_INFO, -- Remove the "-- at the beginning of this and next line for debugging the script
+--        level = dz.LOG_INFO, -- Remove the "-- at the beginning of this and next line for debugging the script
 --        marker = "collectGarbage"
 --    },
 
@@ -98,14 +99,15 @@ return {
         local function request_Response( triggerName, secondsFromNow)
             local url = nil
 
-            if GETDATES == triggerName then
+            if GETDATES == triggerName and nil ~= dz.data.bagId then
                 local myYear = os.date("%Y")
                 url = provider_list[dz.data.provider] .. "/rest/adressen/" .. dz.data.bagId .. "/kalender/" .. myYear
                 --dz.log( "request dates from " .. dz.data.provider .. ". url = " .. url .. ".", dz.LOG_INFO )
-            elseif GETTYPES == triggerName then
+            elseif GETTYPES == triggerName and nil ~= dz.data.bagId then
                 url = provider_list[dz.data.provider] .. "/rest/adressen/" .. dz.data.bagId .. "/afvalstromen"
                 --dz.log( "request types from " .. dz.data.provider .. ". url = " .. url .. ".", dz.LOG_INFO )
-            elseif GETBAGID == triggerName then
+            elseif GETBAGID == triggerName or nil == dz.data.bagId then
+                triggerName = GETBAGID
                 url = provider_list[dz.data.provider] .. "/rest/adressen/" .. myCode
                 --dz.log( "request bagid from " .. dz.data.provider .. ". url = " .. url .. ".", dz.LOG_INFO )
             else
@@ -204,7 +206,7 @@ return {
             
             local garbageLines
             local typeEarliestDate
-            local overallEarliestDate = nil -- Hopefully we will have a different garbage collection system by then
+            local overallEarliestDate = nil
             local garbageToday = false
             local today = os.date("%Y-%m-%d")
             
@@ -227,7 +229,7 @@ return {
                 end
             end
         
-            -- if we've found at least one value ...
+            -- if we've found at least one value we can update the text device.
             if overallEarliestDate then
                 -- ... build the lines for the text device...
                 local ordered = {}
@@ -241,8 +243,8 @@ return {
                         end
                         table.insert(ordered, j, { ["date"] = results[i], ["description"] = dz.data.types[i] } )
                     end
-                        
                 end
+            
                 -- then build a string from that list.
                 garbageLines = ""
                 for i, v in ipairs(ordered) do
@@ -270,11 +272,26 @@ return {
                 end
             end
         
-            if dz.time.matchesRule("at 05:00-10:00") and garbageToday then
-                if overallEarliestType and dz.data.types[overallEarliestType] then
-                    dz.notify(dz.data.types[overallEarliestType] .. " will be collected today")
+            
+            local done_button_device = dz.devices(DONE_BUTTON_DEVICE_NAME)
+            if done_button_device ~= nil then
+                local must_put_bin_out = done_button_device.active
+                for i, v in pairs(dz.data.types) do
+                    if results[i] == today then
+                        must_put_bin_out = true
+                    end
+                end
+                if must_put_bin_out == true and done_button_device.active ~= true then
+                    done_button_device.setOn()
                 end
             end
+            
+        
+            --if dz.time.matchesRule("at 05:00-10:00") and garbageToday then
+            --    if overallEarliestType and dz.data.types[overallEarliestType] then
+            --        dz.notify(dz.data.types[overallEarliestType] .. " will be collected today")
+            --    end
+            --end
             
             return true
         end
@@ -287,7 +304,7 @@ return {
             -- If we have a nil bagId, a nil provider or the address has changed,
             -- get the first provider from our list and call it's url to see if we
             -- get a bagid for our zipcode + number.
-            if nil == dz.data.bagId or nil == dz.data.provider or nil == dz.data.types or dz.data.code ~= myCode then
+            if nil == dz.data.bagId or nil == dz.data.provider or nil == dz.data.types or dz.data.code ~= myCode or nil == provider_list[dz.data.provider] then
                 -- Get the first provider from the provider_list.
                 dz.data.provider, _ = next( provider_list, nil )
                 if nil ~= dz.data.provider then

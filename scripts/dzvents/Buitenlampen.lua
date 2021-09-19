@@ -39,7 +39,8 @@
 
 
 -- Specify the name of the 1st dummy switch here.
-local DARK_TIMER_NAME = 'Time for Avond'
+--local DARK_TIMER_NAME = 'Time for Avond'
+local DARK_TIMER_NAME = 'Hut: Brandgang lamp'
 
 -- Specify the name of the 2nd dummy switch here.
 local SLEEP_TIMER_NAME = 'Slaaptijd'

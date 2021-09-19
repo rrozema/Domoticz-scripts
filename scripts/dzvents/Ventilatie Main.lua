@@ -3,19 +3,23 @@ local FAN_NAME_MIDDLE = 'Ventilatie: Midden'
 
 local KEUKEN_SENSOR_NAME = 'Keuken: TempHum'
 local BADKAMER_SENSOR_NAME = 'Badkamer: TempHum'
-local WASHOK_SENSOR_NAME = 'Washok: TempHum'
+--local WASHOK_SENSOR_NAME = 'Washok: TempHum'
 local WOONKAMER_SENSOR_NAME = 'Woonkamer: TempHum'
 local CO_SENSOR_NAME = 'Washok: CO'
 local BUITEN_SENSOR_NAME = 'Buiten: TempHum'
 
-local HUMIDITY_SETTING_DEVICE_NAME = 'Luchtvochtigheid'
+local HUMIDITY_SETTING_DEVICE_NAME = 'Ventilatie Luchtvochtigheid'
 
 local QUIET_SWITCH_NAME = 'Slaaptijd'
 local WC_AFZUIGING_SWITCH_NAME = 'WC Afzuiging'
 local BADKAMER_AFZUIGING_SWITCH_NAME = 'Badkamer Afzuiging'
-local NIEMAND_THUIS_SWITCH_NAME = 'Niemand thuis'
+local KEUKEN_AFZUIGING_SWITCH_NAME = 'Keuken: Afzuiging'
+local IEMAND_THUIS_SWITCH_NAME = 'Iemand thuis'
 
-local STATUS_SWITCH_NAME = 'Ventilatie'
+local STATUS_SWITCH_NAME = 'Ventilatie Control'
+
+local ACHTERDEUR_SENSOR_NAME = 'Woonkamer: Achterdeur'
+local VOORDEUR_SENSOR_NAME = 'Hal: Voordeur'
 
 
 return {
@@ -25,16 +29,19 @@ return {
         devices = { 
             BADKAMER_SENSOR_NAME,
             KEUKEN_SENSOR_NAME,
-            WASHOK_SENSOR_NAME,
+--            WASHOK_SENSOR_NAME,
             WOONKAMER_SENSOR_NAME,
             BUITEN_SENSOR_NAME,
             HUMIDITY_SETTING_DEVICE_NAME,
             QUIET_SWITCH_NAME,
             WC_AFZUIGING_SWITCH_NAME,
             BADKAMER_AFZUIGING_SWITCH_NAME,
-            NIEMAND_THUIS_SWITCH_NAME,
+            KEUKEN_AFZUIGING_SWITCH_NAME,
+            IEMAND_THUIS_SWITCH_NAME,
             CO_SENSOR_NAME,
             STATUS_SWITCH_NAME,
+            VOORDEUR_SENSOR_NAME,
+            ACHTERDEUR_SENSOR_NAME
 --            FAN_NAME_HIGH,
 --            FAN_NAME_MIDDLE
         }
@@ -55,9 +62,11 @@ return {
             status = {initial = 0},
             CODetected = {initial = false},
             quiet_time = {initial = false},
-            niemand_thuis = {initial = false},
+            iemand_thuis = {initial = false},
             wc_afzuiging = {initial = false},
-            badkamer_afzuiging = {initial = false}
+            keuken_afzuiging = {initial = false},
+            badkamer_afzuiging = {initial = false},
+            door_open = {initial = false}
         },
     execute = function(domoticz, device, triggerInfo)
         if (domoticz.EVENT_TYPE_TIMER == triggerInfo.type) then
@@ -88,10 +97,10 @@ return {
                     domoticz.data.quiet_time = (device.state == 'On')
                 end
 
-            elseif (NIEMAND_THUIS_SWITCH_NAME == device.name) then
-                if ((device.state == 'On' and domoticz.data.niemand_thuis ~= true) or (device.state == 'Off' and domoticz.data.niemand_thuis ~= false)) then
-                    domoticz.log(device.name..': '..tostring(domoticz.data.niemand_thuis)..' -> '..tostring(device.state == 'On')..'.')
-                    domoticz.data.niemand_thuis = (device.state == 'On')
+            elseif (IEMAND_THUIS_SWITCH_NAME == device.name) then
+                if ((device.state == 'On' and domoticz.data.iemand_thuis ~= true) or (device.state == 'Off' and domoticz.data.iemand_thuis ~= false)) then
+                    domoticz.log(device.name..': '..tostring(domoticz.data.iemand_thuis)..' -> '..tostring(device.state == 'On')..'.')
+                    domoticz.data.iemand_thuis = (device.state == 'On')
                 end
 
             elseif (WC_AFZUIGING_SWITCH_NAME == device.name) then
@@ -106,6 +115,12 @@ return {
                     domoticz.data.badkamer_afzuiging = (device.state == 'On')
                 end
 
+            elseif (KEUKEN_AFZUIGING_SWITCH_NAME == device.name) then
+                if ((device.state == 'On' and domoticz.data.keuken_afzuiging ~= true) or (device.state == 'Off' and domoticz.data.keuken_afzuiging ~= false)) then
+                    domoticz.log(device.name..': '..tostring(domoticz.data.keuken_afzuiging)..' -> '..tostring(device.state == 'On')..'.')
+                    domoticz.data.keuken_afzuiging = (device.state == 'On')
+                end
+                
             elseif (HUMIDITY_SETTING_DEVICE_NAME == device.name) then
                 if (device.level ~= domoticz.data.humidityTarget) then
                     -- My humidity sensors won't indicate higher than 90%, so I don't allow
@@ -168,8 +183,15 @@ return {
                     end
                 end
 
-            elseif (device.name == KEUKEN_SENSOR_NAME or device.name == BADKAMER_SENSOR_NAME or device.name == WASHOK_SENSOR_NAME or device.name == WOONKAMER_SENSOR_NAME) then
-                local sensors = domoticz.devices().filter({ KEUKEN_SENSOR_NAME, BADKAMER_SENSOR_NAME, WASHOK_SENSOR_NAME, WOONKAMER_SENSOR_NAME})
+            elseif (device.name == KEUKEN_SENSOR_NAME 
+                    or device.name == BADKAMER_SENSOR_NAME 
+                    --or device.name == WASHOK_SENSOR_NAME 
+                    or device.name == WOONKAMER_SENSOR_NAME) then
+                local sensors = domoticz.devices().filter({ 
+                        KEUKEN_SENSOR_NAME, 
+                        BADKAMER_SENSOR_NAME, 
+                        --WASHOK_SENSOR_NAME, 
+                        WOONKAMER_SENSOR_NAME})
                 local max_humidity = sensors.reduce(
                         function(acc, device)
                             if (device.timedOut ~= true) then -- device.lastUpdate.hoursAgo <= 4) then
@@ -202,11 +224,26 @@ return {
                         domoticz.data.tempBinnen = max_temperature
                     end
                 end
+            elseif (device.name == VOORDEUR_SENSOR_NAME or device.name == ACHTERDEUR_SENSOR_NAME) then
+                local door_sensors = domoticz.devices().filter( {VOORDEUR_SENSOR_NAME, ACHTERDEUR_SENSOR_NAME} )
+                local door_open = door_sensors.reduce(
+                        function( acc, device)
+                            if (device.timedOut ~= true) then
+                                if (acc == false and device.bState == true) then
+                                    acc = true
+                                end
+                            end
+                            return acc
+                        end,
+                        false)
+                if (door_open ~= domoticz.data.door_open) then
+                    domoticz.data.door_open = door_open
+                end
             end
         
             local measured_humidity = domoticz.data.humidityBinnen
             local target_humidity = math.max(domoticz.data.humidityTarget, domoticz.data.humidityBuiten - 20)
---            
+
 --            local switch_device = domoticz.devices( STATUS_SWITCH_NAME )
 --            local stat
 --            if nil ~= switch_device then
@@ -252,32 +289,39 @@ return {
                 fan_middle = 'Off'
                 fan_high = 'Off'
                 
-            elseif (measured_humidity >= 90 and domoticz.data.quiet_time ~= true) then
+            elseif (measured_humidity >= 90 
+                    and domoticz.data.quiet_time ~= true
+                    and domoticz.data.door_open ~= true) then
                 domoticz.log('humidity >= 90%')
 
                 fan_middle = 'Off'
                 fan_high = 'On'
 
+            elseif (domoticz.data.keuken_afzuiging == true) then
+                domoticz.log('timer active')
+                
+                fan_middle = 'Off'
+                fan_high = 'On'
+                
             elseif (measured_humidity > target_humidity + 10 
                                                                         -- If the humidity is more than 10% over the target, set 
-                                                                        -- ventilation to "high".
+                                                                        -- ventilation to "middle".
                     and domoticz.data.quiet_time ~= true                -- But, during the night I don't want the fans to go
                                                                         -- howling, even if it's wet.
---                        and (math.abs(domoticz.data.tempBinnen - measured_humidity) >= 2
---                            or measured_humidity > domoticz.data.humidityBuiten)) then
---                                                                            -- And, if there is hardly no temperature difference between 
---                                                                            -- inside and outside, my WTW will not have any condensation, 
---                                                                            -- so no water will be extracted from the incoming air. It is 
---                                                                            -- a waste of energy to replace large volumes of inside air 
---                                                                            -- by outside air unless that outside air is dryer than the
---                                                                            -- inside air.
+                    and domoticz.data.door_open ~= true                 -- When the door is open, there's no way the fans are
+                                                                        -- going to reduce humidity.
+                    
                     ) then
                 domoticz.log('humidity more than 10% over target')
 
                 fan_middle = 'On'
                 fan_high = 'Off'
 
-            elseif (measured_humidity > target_humidity) then
+            elseif (measured_humidity > target_humidity
+                    and domoticz.data.quiet_time ~= true
+                    and domoticz.data.door_open ~= true                 -- When the door is open, there's no way the fans are
+                                                                        -- going to reduce humidity.
+                ) then
                 domoticz.log('Humidity is <= 10% over target')
                 
                 fan_middle = 'On'
@@ -290,7 +334,7 @@ return {
                 fan_high = 'Off'
 
             else
-                
+
                 fan_middle = 'Off'
                 fan_high = 'Off'
 

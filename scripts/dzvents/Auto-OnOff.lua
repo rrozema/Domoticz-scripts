@@ -15,8 +15,8 @@ local SETTINGS = {
     { "Angelique: Bedlamp", "Angelique: S2" },
     { "Joeri: S1", "Joeri: Ventilator 1" },
     { "Mischa: Ledstrip", "Mischa: S2" },
-    { "Dimitri: Wandlamp", "Dimitri: S2"},
-    { "Keuken: Aanrecht", "Keuken: S2" },
+    { "Mischa: Plafond", "Mischa: S1" },
+    { "Dimitri: S2", "Dimitri: Staande lamp" },
     { "Berging: Plafond", "Berging: Deur" }
 }
 

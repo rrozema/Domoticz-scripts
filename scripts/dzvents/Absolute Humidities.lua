@@ -46,16 +46,16 @@
 --
 --
 
-local TEMPHUM_DEVICE_NAME = '*: TempHum'
+local TEMPHUM_DEVICE_NAMES = { '*: TempHum' }
 
 return {
 	on = {
-		devices = {
-			TEMPHUM_DEVICE_NAME
-		}
+
+		devices =
+			TEMPHUM_DEVICE_NAMES
 	},
 	execute = function(domoticz, device)
-		local device_name = string.sub( device.name, 1, string.len(device.name) - 9) .. ': Humidity'
+		local device_name = string.sub( device.name, 1, string.len(device.name) - 9) .. ': Absolute Humidity'
 		local hum_device = domoticz.devices(device_name)
 
 		if nil ~= hum_device then
@@ -68,7 +68,10 @@ return {
     	    
     		local absolute_humidity = math.floor(1000.0 * math.exp(math.log(10) * 5) * 18.016 / 8314.3 * (device.humidity / 100.0 * dampDruk) / (device.temperature + 273.15) + 0.5) / 1000.0
     		
-    		hum_device.updateCustomSensor(tostring(absolute_humidity))
+    		local value = tostring(hum_device.sensorValue)
+    		if nil == value or value ~= tostring(absolute_humidity) then
+    		    hum_device.updateCustomSensor(tostring(absolute_humidity))
+    		end
     	end
 	end
 }
