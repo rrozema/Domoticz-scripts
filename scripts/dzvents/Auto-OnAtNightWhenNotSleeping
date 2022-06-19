@@ -1,0 +1,87 @@
+-- This script can be used to control garden or porch lights: These 
+-- lights should go on when it gets dark and off when the sun comes 
+-- up. But, if you're anything like me, you think it's a waste to 
+-- leave them on whennobody's there to see them anyway. So you want 
+-- them to go off while you're asleep. This sounds simple, but your 
+-- sleep time may vary, plus the time the sun sets and rises varies 
+-- throughout the year. So much even that in some periods the sun does
+-- not set before you go to sleep or it is up already before you wake
+-- up, in both situations the lights never need to switch on. This 
+-- simple script accomplishes this task with ease. Plus it makes it
+-- easy to adapt the timers to you personal life style.
+-- 
+-- How does it work? 1st you create 2 dummy On/Off switches. The names 
+-- of these switches you later put in the settings below this comment. 
+-- On one of the switches you define 2 timers:
+--  1 - On at 30 minutes before sunset
+--  2 - Off at 30 minutes after sunrise
+-- On the other switch you define 4 timers:
+--  1 - On at 23:00 on work days
+--  2 - Off at 7:00 on work days
+--  3 - On at 0:00 on weekend days
+--  4 - Off at 9:00 on weekend days
+-- Of course you can vary the timers on the 2nd switch depending on 
+-- your personal life style.
+-- Now you paste this script code into a DzVents script, fill in the 
+-- names of the both dummy switches you created. And you fill in the 
+-- names of the lights you want to switch. If you want to switch more 
+-- than one light, simply enter multiple names, separate them with a
+-- comma. Then give your script a name and click the Save button.
+-- To see if it works, you don't need to wait for the evening, you 
+-- can simply push the buttons yourself :-). This is also a nice way
+-- to override the timers if you're one day expecting someone to 
+-- arrive late or early.
+
+-- Instead of using a timer for the darkness switch, you can also opt 
+-- to use a lux meter to actually measure darkness and feed this into 
+-- the script. I don't have an outdoor lux sensor, so I leave that to 
+-- your own imagination.
+
+
+-- Specify the name of the 1st dummy switch here.
+local DARK_TIMER_NAME = 'Timer voor buitenlampen'
+
+-- Specify the name of the 2nd dummy switch here.
+local SLEEP_TIMER_NAME = 'Slaaptijd'
+
+-- Specify the names of the switches for your garden or porch lights
+-- here. If you want to switch multiple lights specify them like
+-- { 'light1', 'light2', 'light3' }
+local SWITCHES = { 'Hal: Buitenlamp' }
+
+return {
+	on = {
+		devices = {
+			DARK_TIMER_NAME,
+			SLEEP_TIMER_NAME
+		}
+	},
+	execute = function(domoticz, device)
+	    domoticz.log('Device ' .. device.name .. ' was changed', domoticz.LOG_INFO)
+	    
+	    if device.isDevice and (DARK_TIMER_NAME == device.name or SLEEP_TIMER_NAME == device.name) then
+            local dark = domoticz.devices(DARK_TIMER_NAME)
+            local sleep = domoticz.devices(SLEEP_TIMER_NAME)
+
+    	    if nil == dark then
+    	        domoticz.log( "Missing device " .. DARK_TIMER_NAME .. ".", domoticz.LOG_ERROR)
+    	    elseif nil == sleep then
+    	        domoticz.log( "Missing device " .. SLEEP_TIMER_NAME .. ".", domoticz.LOG_ERROR)
+    	    else
+    	        domoticz.devices().filter(SWITCHES).forEach(
+    	            function(light)
+            		    if dark.active and not sleep.active then
+            		        if not light.active then
+            		            light.switchOn()
+            		        end
+                        else
+                            if light.active then
+                	            light.switchOff()
+                	        end
+                        end
+    	            end
+                )
+	        end
+	    end
+	end
+}

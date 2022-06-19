@@ -1,4 +1,4 @@
--- Auto-On by Richard Rozema (rrozema).
+-- Auto-On by Richard Rozema. 
 --
 -- Auto-On switches On one or more "slave" switches when a "master" 
 -- switch is switched On. The "slave" switches do NOT respond to 
@@ -149,20 +149,17 @@ local SETTINGS = {
                 if nil == lux_device or lux_device.lux < 50 or lux_device.timedOut then
                     return 'Trap 1: Plafond'
                 end
-            end,
+            end
 
-    ["Woonkamer: Motion 2"] =
-            function ( domoticz, device )
-                return {"Woonkamer: Scherm Links", "Woonkamer: Scherm Rechts", "Woonkamer: Speakers"}
-            end,         
+ --   ["Woonkamer: Motion 2"] =
+ --           function ( domoticz, device )
+ --               return {"Woonkamer: Scherm Links", "Woonkamer: Scherm Rechts", "Woonkamer: Speakers"}
+ --           end
 }
 
 ----- edit above here --------
 
 -- Version history:
--- 2022-01-11
---  - Added check specifying auto_on_level for switches without a setLevel method.
---
 -- 2021-09-10
 --  - Added regular expression to filter out descriptions that can't be json. Thanks EddyG!
 --  - Fixed some inconsistent coding when retrieving the auto_on_level setting.
@@ -201,43 +198,34 @@ local function switchOn( domoticz, switches )
             switches = { switches }
         end
         if type(switches) == "table" then
-            domoticz.devices().filter( switches )
-                .forEach(
-                    function( switch )
-                        local level = nil
-                        domoticz.log('Checking ' .. switch.name .. '.')
-                        
-                        local description = string.match(switch.description, '^[^{]*({.*})[^}]*$')
-                        if nil ~= description and description ~= '' then
-                            local ok, settings = pcall( domoticz.utils.fromJSON, description)
-                            if ok and nil ~= settings then
-                                if nil ~= settings.auto_on_level then
-                                    level = settings.auto_on_level;
-                                    domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+            if device.bState then
+                domoticz.devices().filter( switches )
+                    .forEach(
+                        function( switch )
+                            local level = nil
+                            domoticz.log('Checking ' .. switch.name .. '.')
+                            
+                            local description = string.match(switch.description, '^[^{]*({.*})[^}]*$')
+                            if nil ~= description and description ~= '' then
+                                local ok, settings = pcall( domoticz.utils.fromJSON, description)
+                                if ok and nil ~= settings then
+                                    if nil ~= settings.auto_on_level then
+                                        level = settings.auto_on_level;
+                                        domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
+                                    end
                                 end
                             end
-                        end
                         
-                        if nil ~= level then
-                            if nil == switch.level then
-                                domoticz.log('auto_on_level specified for device ' .. switch.name .. ' that does not have a level property. Calling switchOn() instead.', domoticz.LOG_ERROR)
-                                switch.switchOn()
-                            elseif "function" ~= type(switch.setLevel) then
-                                domoticz.log('auto_on_level specified for device ' .. switch.name .. ' that does not have a setLevel() method. Calling switchOn() instead.', domoticz.LOG_ERROR)
-                                switch.switchOn()
-                            elseif switch.level < tonumber(level) and type(switch.setLevel) == "function" then
+                            if nil ~= level and switch.level < tonumber(level) then
                                 domoticz.log('setLevel(' .. tostring(level) .. ') : ' .. switch.name .. '.')
                                 switch.setLevel(tonumber(level))
                             elseif switch.bState ~= true then
                                 domoticz.log('switchOn() : ' .. switch.name .. '.')
                                 switch.switchOn()
                             end
-                        else
-                            domoticz.log('switchOn() : ' .. switch.name .. '.')
-                            switch.switchOn()
                         end
-                    end
-                )
+                    )
+            end
         end
     end
 end
@@ -251,7 +239,7 @@ return {
     execute = function(domoticz, trigger, triggerInfo)
         if trigger.isDevice then
             local device = trigger
-            domoticz.log(device.name..': state '..tostring(device.bState)..'.', domoticz.LOG_DEBUG)
+            domoticz.log(device.name..': state '..tostring(device.bState)..'.')
             
             local switches = SETTINGS[device.name]
             if nil ~= switches then
@@ -267,61 +255,37 @@ return {
                 end
                 
                 if type(switches) == "table" then
-                    -- If the trigger device is On ...
-                    domoticz.log('Trigger device ' .. device.name .. '.bState is ' .. tostring(device.bState) .. '.', domoticz.LOG_DEBUG)
                     if device.bState then
-                        -- For each switch that needs to switched on ...
                         domoticz.devices().filter( switches )
                             .forEach(
                                 function( switch )
                                     local level = nil
-                                    domoticz.log('Checking device ' .. switch.name .. ' for json settings.', domoticz.LOG_DEBUG)
+                                    domoticz.log('Checking ' .. switch.name .. '.')
                             
-                                    -- Find the contents of the description field, but use only the part that
-                                    -- looks like it could be json. i.e. anything from the first { from the
-                                    -- start up to and including the last } from the end, anything outside
-                                    -- these two curly braces is silently ignored.
                                     local description = string.match(switch.description, '^[^{]*({.*})[^}]*$')
                                     if nil ~= description and description ~= '' then
                                         local ok, settings = pcall( domoticz.utils.fromJSON, description)
                                         if ok and nil ~= settings then
-                                            -- Settings were found ...
                                             if nil ~= settings.auto_on_level then
-                                                -- and it has an auto_on_level property.
                                                 level = settings.auto_on_level;
-                                                domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.', domoticz.LOG_DEBUG)
+                                                domoticz.log('Found auto_on_level of ' .. tostring(level) .. ' for ' .. switch.name .. '.')
                                             end
                                         end
                                     end
                                 
-                                    if nil == level then
-                                        -- No auto_on_level specified: just use switchOn()
-                                        if true ~= switch.bState then
-                                            domoticz.log('switchOn() : ' .. switch.name .. '.', domoticz.LOG_DEBUG)
-                                            switch.switchOn()
-                                        end
-                                    else
-                                        -- an auto_on_level was found ...
-                                        if nil == switch.level then
-                                            -- but the switch doesn't have a level property?
-                                            domoticz.log('auto_on_level specified for device ' .. switch.name .. ' that does not have a level property. Using switchOn() instead.', domoticz.LOG_WARNING)
-                                            if true ~= switch.bState then
-                                                switch.switchOn()
-                                            end
-                                        elseif "function" ~= type(switch.setLevel) then
-                                            -- but the switch doesn't have a setLevel method?
-                                            domoticz.log('auto_on_level specified for device ' .. switch.name .. ' that does not have a setLevel() method. Using switchOn() instead.', domoticz.LOG_WARNING)
-                                            if true ~= switch.bState then
-                                                switch.switchOn()
-                                            end
-                                        else if switch.level < tonumber(level) then
-                                            -- Only if the dimmer's current level is less than the new level we set the dimmer to the 
-                                            -- auto_on_level. It would not be much of an 'On' experience for the user if we dim the 
-                                            -- light to a lower level.
-                                            domoticz.log('setLevel(' .. tostring(level) .. ') : ' .. switch.name .. '.', domoticz.LOG_DEBUG)
-                                            switch.setLevel(tonumber(level))
-                                        end
+                                    if nil ~= level and switch.level < tonumber(level) then
+                                        domoticz.log('setLevel(' .. tostring(level) .. ') : ' .. switch.name .. '.')
+                                        switch.setLevel(tonumber(level))
+                                    elseif true ~= switch.bState then
+                                        domoticz.log('switchOn() : ' .. switch.name .. '.')
+                                        switch.switchOn()
                                     end                                    
+                                    
+                                    
+--                                    if switch.bState ~= true then
+--                                        domoticz.log('switchOn() : ' .. switch.name .. '.')
+--                                        switch.switchOn()
+--                                    end
                                 end
                             )
                     end

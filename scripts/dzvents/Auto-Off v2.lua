@@ -33,7 +33,8 @@
 -- Version history:
 -- 2.04 - by EddyG : use pattern matching to see if description looks like json, and ignore anyhting that's not inside curly braces.
 
-local AUTOOFFVERSION = '2.04'
+local SCRIPT_NAME = 'Generic Auto Off'
+local SCRIPT_VERSION = '2.05'
 
 return {
 	on = {
@@ -44,12 +45,12 @@ return {
 	},
 	logging = {
         level = domoticz.LOG_WARNING,
-        marker = 'Generic Auto Off v' .. AUTOOFFVERSION
+        marker = SCRIPT_NAME .. ' v' .. SCRIPT_VERSION
     },
 	execute = function(domoticz, triggeredItem, info)
         local cnt = 0
         
-        domoticz.log( 'Generic Auto Off v' .. AUTOOFFVERSION .. ', Domoticz v' .. domoticz.settings.domoticzVersion .. ', Dzvents v' .. domoticz.settings.dzVentsVersion .. '.', domoticz.LOG_INFO)
+        domoticz.log( SCRIPT_NAME .. ' v' .. SCRIPT_VERSION .. ', Domoticz v' .. domoticz.settings.domoticzVersion .. ', Dzvents v' .. domoticz.settings.dzVentsVersion .. '.', domoticz.LOG_INFO)
         
         local now = domoticz.time
         
@@ -94,7 +95,7 @@ return {
                                             dimlevel = { level = 0, minutes = tonumber(settings.auto_off_minutes)}
                                         end
                                     else
-                                        domoticz.log('Group ' .. tostring(settings.auto_off_group_inactive) .. ' not found.', domoticz.LOG_ERROR )
+                                        domoticz.log('Group ' .. tostring(settings.auto_off_group_inactive) .. ', specified in ' .. tostring(device.name) .. ' not found.', domoticz.LOG_ERROR )
                                     end
                                 else
                                     dimlevel = { level = 0, minutes = tonumber(settings.auto_off_minutes)}

@@ -16,8 +16,11 @@ local SETTINGS = {
     { "Joeri: S1", "Joeri: Ventilator 1" },
     { "Mischa: Ledstrip", "Mischa: S2" },
     { "Mischa: Plafond", "Mischa: S1" },
-    { "Dimitri: S2", "Dimitri: Staande lamp" },
-    { "Berging: Plafond", "Berging: Deur" }
+--    { "Richard: Plafond", "Richard: S2" },
+--    { "Richard: S2", "Thuis werken" },
+    { "Berging: Plafond", "Berging: Deur" },
+    { "Richard: Scherm Midden", "Richard: Speakers computer"},
+    { "Richard: Scherm tv", "Richard: Speakers"} 
 }
 
 

@@ -8,7 +8,7 @@
 ----- edit below here --------
 
 local SETTINGS = {
-    ["svt_cv - Thermostat Pause"]  = { "Woonkamer: Achterdeur", "Hal: Voordeur" }
+    --["svt_cv - Thermostat Pause"]  = { "Woonkamer: Achterdeur", "Hal: Voordeur" }
 }
 
 ----- edit above here --------

@@ -1,0 +1,89 @@
+local WORK_FROM_HOME_NAME = 'Thuis werken'
+local TIMED_SWITCH_NAME = 'Time for Avond'
+
+local ON_NAMES = { 'Richard: Scherm Links', 'Richard: Scherm Midden', 'Richard: Scherm Rechts' }
+local ON_WHEN_DARK_NAMES = {} --{ 'Richard: Plafond' }
+local THERMOSTAT_NAMES = { 'Richard: Radiator' }
+
+local TEMPERATURE_HIGH = 23
+local TEMPERATURE_LOW = 17
+
+return {
+	on = {
+		devices = {
+			WORK_FROM_HOME_NAME,
+			TIMED_SWITCH_NAME
+		}
+	},
+	logging = {
+		level = domoticz.LOG_INFO,
+		marker = 'thuis werken',
+	},
+	execute = function(domoticz, item)
+	    
+        if item.isDevice then
+            local timed_switch
+            local work_from_home
+
+            if WORK_FROM_HOME_NAME == item.name then
+                work_from_home = item
+            else
+                work_from_home = domoticz.devices(WORK_FROM_HOME_NAME)
+            end
+            
+            if item.name == TIMED_SWITCH_NAME then
+                timed_switch = item
+            else
+                timed_switch = domoticz.devices(TIMED_SWITCH_NAME)
+            end
+                
+            if nil == timed_switch then
+                domoticz.log('Device ' .. TIMED_SWITCH_NAME .. ' not found.', domoticz.LOG_ERROR)
+            elseif nil == work_from_home then
+                domoticz.log('Device ' .. WORK_FROM_HOME_NAME .. ' not found.', domoticz.LOG_ERROR)
+            else
+                if WORK_FROM_HOME_NAME == item.name then
+                    domoticz.devices().filter(THERMOSTAT_NAMES).forEach(
+                            function(thermostat)
+                                if work_from_home.active and TEMPERATURE_HIGH > thermostat.setPoint then
+    --domoticz.log(thermostat.name .. ' setPoint ' .. tostring(thermostat.setPoint) .. ' -> ' .. tostring(TEMPERATURE_HIGH) .. '.', domoticz.LOG_ERROR)
+                                    thermostat.updateSetPoint(TEMPERATURE_HIGH)
+                	            elseif not work_from_home.active and TEMPERATURE_LOW < thermostat.setPoint then
+    --domoticz.log(thermostat.name .. ' setPoint ' .. tostring(thermostat.setPoint) .. ' -> ' .. tostring(TEMPERATURE_LOW) .. '.', domoticz.LOG_ERROR)
+                	                thermostat.updateSetPoint(TEMPERATURE_LOW)
+                                end
+                            end
+                        )
+
+                    domoticz.devices().filter(ON_NAMES).forEach(
+                            function(device)
+                                if not device.active and work_from_home.active then
+    --domoticz.log(device.name .. ' switched on.' , domoticz.LOG_ERROR)
+                                    device.switchOn()
+                                elseif device.active and not work_from_home.active then
+    --domoticz.log(device.name .. ' switched off.' , domoticz.LOG_ERROR)
+                                    device.switchOff()
+                                end
+                            end
+                        )
+                end
+            	
+                if WORK_FROM_HOME_NAME == item.name or (work_from_home.active and TIMED_SWITCH_NAME == item.name) then
+                    domoticz.devices().filter(ON_WHEN_DARK_NAMES).forEach(
+            	            function(device)
+                    	        if not device.active and work_from_home.active and timed_switch.active then
+    --domoticz.log(device.name .. ' switched on.' , domoticz.LOG_ERROR)
+                                    device.switchOn()
+                                elseif device.active and not (work_from_home.active and timed_switch.active) then
+    --domoticz.log(device.name .. ' switched off.' , domoticz.LOG_ERROR)
+                                    device.switchOff()
+                                end
+                            end
+                        )
+                end
+            end
+        else
+            domoticz.log('Unexpected script trigger type.', domoticz.LOG_ERROR)
+        end
+	end
+}

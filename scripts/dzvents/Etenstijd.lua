@@ -2,7 +2,8 @@ local DEVICE_NAMES = {
         'Woonkamer: Plafond',
         'Joeri: Plafond',
         'Mischa: Plafond',
-        'Dimitri: Plafond'
+        'Dimitri: Wandlamp',
+        'Angelique: Wandlamp'
     }
 
 return {

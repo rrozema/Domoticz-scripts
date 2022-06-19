@@ -1,5 +1,5 @@
 local TIMER_EVENT_NAME = 'every 15 minutes'
-local OUTSIDE_TEMPERATURE_NAME = 'Buiten: TempHum'
+local OUTSIDE_TEMPERATURE_NAME = 'BR: TempHumBaro' --'Buiten: TempHum'
 local AVERAGE_TEMPERATURE_NAME = 'Buiten: Gemiddelde temperatuur'
 local GAS_USAGE_NAME = 'Gas'
 local AVERAGE_USAGE_DHW_NAME = 'Gemiddeld gasverbruik DHW'
