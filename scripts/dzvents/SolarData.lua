@@ -41,7 +41,7 @@ local idxBarometer  = 1033      -- Barometer device. E.g. a device from Openweat
 local idxSolarAzimuth  = 1198    -- Your device. A Virtual customer sensor for Solar Azimuth 
 local idxSolarAltitude = 1197    -- Your device. A Virtual customer sensor for Solar Altitude
 local idxRadiation     = 1201    -- Your device. A Virtual customer sensor for Solar Radiation  (in Watt/m2)
-local idxLux           = 1196    -- Your device. A Virtual customer sensor for Solar Lux
+local idxLux           = 1196    -- Your device. A Virtual lux sensor for Solar Lux
 
 -- Other parameters -----------------------------------------------------
 local intervalMins = 3	        -- The interval of running this script. No need to be faster than the data source. (For example it is 10 min)
